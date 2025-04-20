@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <style>
+        /* General Styles */
+      /* General Styles */
+body {
+    background-color: #C2D2D2;
+    color: #fafbfe;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Container Styles */
+.container {
+    background-color: #0c0000;
+    padding: 32px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(134, 11, 11, 0.1);
+    width: 100%;
+    max-width: 600px; /* Increase the max width for desktop */
+    min-width: 400px; /* Set a reasonable minimum width for large screens */
+    box-sizing: border-box;
+}
+
+/* Heading Styles */
+h1 {
+    font-size: 2rem; /* Increase the heading size for desktop */
+    font-weight: bold;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+/* Label Styles */
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Input Fields */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    color: #111827;
+    background-color: #f9fafb;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+    outline: none;
+    border-color: #63b3ed;
+    box-shadow: 0 0 0 2px rgba(99, 179, 237, 0.5);
+}
+
+/* Dropdown for role selection */
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    color: #111827;
+    background-color: #f9fafb;
+    margin-bottom: 16px;
+    box-sizing: border-box;
+}
+
+/* Button Styles */
+button {
+    width: 100%;
+    padding: 14px;
+    background-color: #38b2ac;
+    color: #ffffff;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+}
+
+button:hover {
+    background-color: #4fd1c5;
+}
+
+button:disabled {
+    background-color: #e2e8f0;
+    cursor: not-allowed;
+}
+
+/* Error Message */
+.error-message {
+    color: red;
+    font-size: 0.875rem;
+    margin-top: -12px;
+    margin-bottom: 16px;
+}
+
+/* Show Password Icon */
+.show-password-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 1.25rem;
+    color: #888;
+}
+
+/* OTP Section */
+#otpSection {
+    display: none;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+        padding: 10px;
+    }
+
+    button {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 16px;
+        max-width: 100%; /* Allow the container to take full width on small screens */
+        min-width: 100%;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+        padding: 8px;
+    }
+
+    button {
+        padding: 10px;
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Register</h1>
+        <form id="registerForm" action="#" method="POST" onsubmit="return validateForm()">
+            <!-- Role Selection -->
+            <div>
+                <label for="role">Role</label>
+                <select id="role" name="role" required>
+                    <option value="" disabled selected>Select your role</option>
+                    <option value="administrator">Administrator</option>
+                    <option value="staff">Staff</option>
+                </select>
+            </div>
+
+            <!-- Email Field -->
+            <div>
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                <div id="emailError" class="error-message"></div>
+            </div>
+
+            <!-- Password Field -->
+            <div style="position: relative;">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Choose a password" required>
+                <div id="passwordError" class="error-message"></div>
+                <!-- Show Password Icon -->
+                <i id="showPasswordIcon" class="show-password-icon" onclick="togglePassword()">👁️</i>
+            </div>
+
+            <!-- OTP Field -->
+            <div id="otpSection">
+                <label for="otp">OTP</label>
+                <input type="text" id="otp" name="otp" placeholder="Enter OTP" required>
+                <div id="otpError" class="error-message"></div>
+            </div>
+
+            <!-- Send OTP Button -->
+            <div>
+                <button type="button" id="sendOtpBtn" onclick="sendOtp()">Send OTP</button>
+            </div>
+
+            <!-- Register Button -->
+            <div>
+                <button type="submit" id="registerBtn" disabled>Register</button>
+            </div>
+        </form>
+
+        <p>
+            Already have an account? <a href="/login" class="text-primary-600">Login</a>
+        </p>
+    </div>
+    <script>
+        // Function to send OTP upon registration
+        function sendOtp() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const role = document.getElementById("role").value;
+    
+            if (!email || !password || !role) {
+                alert("Please fill in all fields before requesting OTP.");
+                return;
+            }
+    
+            fetch("http://localhost:5000/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password, role })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert("OTP sent successfully. Check your email.");
+                    document.getElementById("otpSection").style.display = "block";
+                    document.getElementById("otp").disabled = false;
+                    document.getElementById("registerBtn").disabled = false;
+                } else {
+                    alert(data.error || "Error sending OTP.");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Failed to send OTP. Please try again.");
+            });
+        }
+    
+        // Function to verify OTP and complete registration
+        function verifyOtpAndRedirect() {
+            const otp = document.getElementById("otp").value;
+            const email = document.getElementById("email").value;
+    
+            if (!otp) {
+                alert("Please enter the OTP.");
+                return;
+            }
+    
+            fetch("http://localhost:5000/verify-registration-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, otp })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert("OTP verified successfully! Redirecting to login.");
+                    window.location.href = "/login"; 
+                } else {
+                    alert(data.error || "Invalid OTP. Please try again.");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("Error verifying OTP. Please try again.");
+            });
+        }
+    
+        // Attach event listener to the form submission
+        document.getElementById("registerForm").addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent form submission
+            verifyOtpAndRedirect(); // Call OTP verification function
+        });
+    
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordField = document.getElementById("password");
+            const passwordIcon = document.getElementById("showPasswordIcon");
+    
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                passwordIcon.textContent = "🙈";
+            } else {
+                passwordField.type = "password";
+                passwordIcon.textContent = "👁️";
+            }
+        }
+    
+        // Form validation
+        function validateForm() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const role = document.getElementById("role").value;
+            let isValid = true;
+    
+            // Email validation
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailPattern.test(email)) {
+                document.getElementById("emailError").textContent = "Enter a valid email address.";
+                isValid = false;
+            } else {
+                document.getElementById("emailError").textContent = "";
+            }
+    
+            // Password validation
+            const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+={}\[\]|\\:;"<>,.?/`~-]{8,}$/;
+            if (!passwordPattern.test(password)) {
+                document.getElementById("passwordError").textContent = "Password must have 8+ characters, one uppercase, one lowercase, and one number.";
+                isValid = false;
+            } else {
+                document.getElementById("passwordError").textContent = "";
+            }
+    
+            // Role validation
+            if (!role) {
+                alert("Please select a role.");
+                isValid = false;
+            }
+    
+            return isValid;
+        }
+    </script>
+    
+</body>
+</html>

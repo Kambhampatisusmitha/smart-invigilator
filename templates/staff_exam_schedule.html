@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Schedule - Staff View</title>
+
+    <!-- External libraries for export functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #c2d2c2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        #scheduleTable {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        #scheduleTable th, #scheduleTable td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        #scheduleTable th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #scheduleTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Updated style for the button container to align buttons to the right */
+        .button-container {
+            text-align: right; /* Align the buttons to the right */
+            margin-bottom: 20px;
+        }
+
+        /* Styling for the individual buttons */
+        .button-container button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .button-container button:hover {
+            background-color: #0056b3;
+        }
+        .search-section {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Add space between input fields */
+input[type="date"], input[type="time"], input[type="text"], input[type="number"], select {
+    padding: 8px;
+    width: 100%;
+    max-width: 180px;
+    box-sizing: border-box;
+    margin-bottom: 10px;  /* Add space below each input */
+}
+
+/* You can also add some margin to the form labels if needed */
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Exam Schedule</h1>
+
+        <!-- Container for export buttons -->
+        <div class="button-container">
+            <button id="exportPDF" onclick="exportToPDF()">Export PDF</button>
+            <button id="exportXLSX" onclick="exportToXLSX()">Export XLSX</button>
+        </div>
+
+        <div class="search-section">
+            <label>From Date:</label>
+            <input type="date" id="fromDate" onchange="searchSchedule()">
+            <label>To Date:</label>
+            <input type="date" id="toDate" onchange="searchSchedule()">
+            <input type="text" id="searchExam" placeholder="Search by Exam Name" onkeyup="searchSchedule()">
+        </div>
+
+        <!-- Exam Schedule Table -->
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Serial No</th>
+                    <th>Date</th>
+                    <th>From Time</th>
+                    <th>To Time</th>
+                    <th>Exam Name</th>
+                    <th>Exam Code</th>
+                    <th>Exam Type</th>
+                    <th>Staff Allocation</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Table rows will be populated dynamically using JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Load schedule data from localStorage when the page is loaded
+        document.addEventListener("DOMContentLoaded", function() {
+            loadSchedule();
+        });
+
+        // Function to load exam schedules from localStorage and populate the table
+        function loadSchedule() {
+            let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+            let tableBody = document.querySelector("#scheduleTable tbody");
+            tableBody.innerHTML = "";
+            schedules.forEach((schedule) => {
+                let row = `<tr>
+                    <td>${schedule.serialNo}</td>
+                    <td>${schedule.date}</td>
+                    <td>${schedule.fromTime}</td>
+                    <td>${schedule.toTime}</td>
+                    <td>${schedule.examName}</td>
+                    <td>${schedule.examCode}</td>
+                    <td>${schedule.examType}</td>
+                    <td>${schedule.staffAllocation}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Function to export the schedule to Excel (XLSX)
+        function exportToXLSX() {
+            let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+
+            const data = schedules.map(schedule => ({
+                'Serial No': schedule.serialNo,
+                'Date': new Date(schedule.date).toISOString().split('T')[0],
+                'From Time': schedule.fromTime,
+                'To Time': schedule.toTime,
+                'Exam Name': schedule.examName,
+                'Exam Code': schedule.examCode,
+                'Exam Type': schedule.examType,
+                'Staff Allocation': schedule.staffAllocation
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Exam Schedule");
+            XLSX.writeFile(wb, "exam_schedule.xlsx");
+        }
+
+        // Function to export the schedule to PDF
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+
+            let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+            if (schedules.length === 0) {
+                alert("No schedules available to export.");
+                return;
+            }
+
+            const title = "Exam Schedule";
+            const pageWidth = doc.internal.pageSize.width;
+            const titleWidth = doc.getTextWidth(title);
+            const xPos = (pageWidth - titleWidth) / 2;
+            doc.text(title, xPos, 20);
+
+            const headers = ["Serial No", "Date", "From Time", "To Time", "Exam Name", "Exam Code", "Exam Type", "Staff Allocation"];
+            const tableData = schedules.map(schedule => [
+                schedule.serialNo,
+                schedule.date,
+                schedule.fromTime,
+                schedule.toTime,
+                schedule.examName,
+                schedule.examCode,
+                schedule.examType,
+                schedule.staffAllocation
+            ]);
+
+            const startX = 10;
+            const startY = 30;
+            doc.setFontSize(12);
+
+            doc.autoTable({
+                startY: startY,
+                head: [headers],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: '#4CAF50', textColor: '#fff' },
+                margin: { left: startX, top: startY },
+                styles: {
+                    overflow: 'linebreak',
+                    cellWidth: 'auto',
+                    fontSize: 10,
+                    halign: 'center',
+                    valign: 'middle',
+                    maxWidth: 60,
+                },
+                columnStyles: {
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 50 },
+                    5: { cellWidth: 30 },
+                    6: { cellWidth: 30 },
+                    7: { cellWidth: 40 },
+                },
+                pageBreak: 'auto',
+                rowPageBreak: 'auto',
+                tableWidth: 'wrap',
+            });
+
+            doc.save("exam_schedule.pdf");
+        }
+
+
+        function searchSchedule() {
+    let searchText = document.getElementById("searchExam").value.toLowerCase();
+    let fromDate = document.getElementById("fromDate").value;
+    let toDate = document.getElementById("toDate").value;
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+    let filtered = schedules.filter(schedule => {
+        return (
+            (!fromDate || schedule.date >= fromDate) &&
+            (!toDate || schedule.date <= toDate) &&
+            (!searchText || schedule.examName.toLowerCase().includes(searchText))
+        );
+    });
+    
+    let tableBody = document.querySelector("#scheduleTable tbody");
+    tableBody.innerHTML = "";
+    filtered.forEach((schedule, index) => {
+        let row = `<tr>
+            <td>${schedule.serialNo}</td>
+            <td>${schedule.date}</td>
+            <td>${schedule.fromTime}</td>
+            <td>${schedule.toTime}</td>
+            <td>${schedule.examName}</td>
+            <td>${schedule.examCode}</td>
+            <td>${schedule.examType}</td>
+            <td>${schedule.staffAllocation}</td>
+           
+        </tr>`;
+        tableBody.innerHTML += row;
+    });
+} 
+
+    </script>
+</body>
+</html>

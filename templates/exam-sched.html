@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Schedule</title>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+
+        <!-- Load jsPDF Library -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+        <!-- Load jsPDF autoTable Plugin (this is a separate plugin for tables) -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.js"></script>
+    
+    
+    <style>
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #c2d2c2;
+    margin: 20px;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px; /* Limiting the max width to 1200px */
+    min-width: 1200px; /* Ensuring the container doesn't go below 1200px */
+    margin: auto;
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 1200px) {
+    .container {
+        min-width: 100%; /* Adjust the container width to fit smaller screens */
+        padding: 15px;   /* Adjust padding for smaller screens */
+    }
+}
+
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+#scheduleTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#scheduleTable th, #scheduleTable td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+#scheduleTable th {
+    background-color: #4CAF50;
+    color: white;
+}
+
+#scheduleTable tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.search-section {
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Add space between input fields */
+input[type="date"], input[type="time"], input[type="text"], input[type="number"], select {
+    padding: 8px;
+    width: 100%;
+    max-width: 180px;
+    box-sizing: border-box;
+    margin-bottom: 10px;  /* Add space below each input */
+}
+
+/* You can also add some margin to the form labels if needed */
+label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    width: 300px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    color: red;
+}
+
+.action-buttons button {
+    margin: 2px;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+.edit-btn {
+    background-color: #ffc107;
+    color: white;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .search-section {
+        flex-direction: column;
+    }
+}
+/* Container for the buttons */
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* Styling for the individual buttons */
+.button-container button {
+    padding: 10px 20px;
+    background-color: #007BFF;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.button-container button:hover {
+    background-color: #0056b3;
+}
+
+
+      
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Exam Schedule</h1>
+    
+        <!-- Wrap the buttons inside a div with the class 'button-container' -->
+        <div class="button-container">
+            <button id="createButton" onclick="openForm()">+ Create Exam Schedule</button>
+    
+            <!-- Place export buttons on the right -->
+            <div>
+                <button id="exportPDF" onclick="exportToPDF()">Export PDF</button>
+                <button id="exportXLSX" onclick="exportToXLSX()">Export XLSX</button>
+            </div>
+        </div>
+    
+      
+
+
+        <div class="search-section">
+            <label>From Date:</label>
+            <input type="date" id="fromDate" onchange="searchSchedule()">
+            <label>To Date:</label>
+            <input type="date" id="toDate" onchange="searchSchedule()">
+            <input type="text" id="searchExam" placeholder="Search by Exam Name" onkeyup="searchSchedule()">
+        </div>
+
+        <table id="scheduleTable">
+            <thead>
+                <tr>
+                    <th>Serial No</th>
+                    <th>Date</th>
+                    <th>From Time</th>
+                    <th>To Time</th>
+                    <th>Exam Name</th>
+                    <th>Exam Code</th>
+                    <th>Exam Type</th>
+                    <th>Staff Allocation</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <div id="formContainer" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeForm()">&times;</span>
+                <h2 id="formTitle">Create Exam Schedule</h2>
+                <form id="examForm">
+                    <input type="hidden" id="editIndex">
+                    <label>Serial No:</label>
+                    <input type="number" id="serialNo" required><br>
+                    <label>Date:</label>
+                    <input type="date" id="examDate" required><br>
+                    <label>From Time:</label>
+                    <input type="time" id="fromTime" required><br>
+                    <label>To Time:</label>
+                    <input type="time" id="toTime" required><br>
+                    <label>Exam Name:</label>
+                    <input type="text" id="examName" required><br>
+                    <label>Exam Code:</label>
+                    <input type="text" id="examCode" required><br>
+                    <label>Exam Type:</label>
+                    <select id="examType" required>
+                        <option value="">Select Type</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Supplementary">Supplementary</option>
+                    </select><br>
+                    <label>Staff Allocation:</label>
+                    <input type="text" id="staffAllocation" required><br>
+                    <button type="submit">Save Schedule</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+
+<!-- Create/Edit Modal Form -->
+<div id="formContainer" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeForm()">&times;</span>
+        <h2 id="formTitle">Create Exam Schedule</h2>
+        <form id="examForm">
+            <input type="hidden" id="editIndex">
+            <label>Serial No:</label>
+            <input type="number" id="serialNo" required><br>
+
+            <label>Date:</label>
+            <input type="date" id="examDate" required><br>
+
+            <label>From Time:</label>
+            <input type="time" id="fromTime" required><br>
+
+            <label>To Time:</label>
+            <input type="time" id="toTime" required><br>
+
+            <label>Exam Name:</label>
+            <input type="text" id="examName" required><br>
+
+            <label>Exam Code:</label>
+            <input type="text" id="examCode" required><br>
+
+            <label>Exam Type:</label>
+            <select id="examType" required>
+                <option value="">Select Type</option>
+                <option value="Regular">Regular</option>
+                <option value="Supplementary">Supplementary</option>
+            </select><br>
+
+            <label>Staff Allocation:</label>
+            <input type="text" id="staffAllocation" required><br>
+
+            <button type="submit">Save Schedule</button>
+        </form>
+    </div>
+</div>
+
+
+    <script>
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    loadSchedule();
+});
+
+function openForm() {
+    const editIndex = document.getElementById("editIndex").value; // Get the index of the schedule being edited
+    
+    if (editIndex !== "") {
+        // If there's an editIndex, it's "Edit" mode
+        document.getElementById("formTitle").textContent = "Edit Exam Schedule"; // Set the title
+    } else {
+        // If no editIndex, it's "Create" mode
+        document.getElementById("formTitle").textContent = "Create Exam Schedule"; // Set title for creating
+    }
+    
+    document.getElementById("formContainer").style.display = "block"; // Show the form modal
+    document.getElementById("examForm").reset(); // Clear any previous form data
+}
+
+
+
+function closeForm() {
+    document.getElementById("formContainer").style.display = "none";
+}
+
+function saveSchedule(event) {
+    event.preventDefault();
+    
+    // Retrieve all schedules
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+    
+    // Get form data
+    let schedule = {
+        serialNo: document.getElementById("serialNo").value,
+        date: document.getElementById("examDate").value,
+        fromTime: document.getElementById("fromTime").value,
+        toTime: document.getElementById("toTime").value,
+        examName: document.getElementById("examName").value,
+        examCode: document.getElementById("examCode").value,
+        examType: document.getElementById("examType").value,
+        staffAllocation: document.getElementById("staffAllocation").value
+    };
+
+    // Check if we're editing an existing schedule
+    let index = document.getElementById("editIndex").value;
+    if (index !== "") {
+        // If there's an editIndex, update the existing schedule
+        schedules[index] = schedule;
+    } else {
+        // If no editIndex, add the new schedule
+        schedules.push(schedule);
+    }
+    
+    // Save the updated schedules back to localStorage
+    localStorage.setItem("examSchedules", JSON.stringify(schedules));
+    
+    // Reload the schedule table
+    loadSchedule();
+    
+    // Close the form modal
+    closeForm();
+}
+
+
+document.getElementById("examForm").addEventListener("submit", saveSchedule);
+
+function loadSchedule() {
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+    let tableBody = document.querySelector("#scheduleTable tbody");
+    tableBody.innerHTML = "";
+    schedules.forEach((schedule, index) => {
+        let row = `<tr>
+            <td>${schedule.serialNo}</td>
+            <td>${schedule.date}</td>
+            <td>${schedule.fromTime}</td>
+            <td>${schedule.toTime}</td>
+            <td>${schedule.examName}</td>
+            <td>${schedule.examCode}</td>
+            <td>${schedule.examType}</td>
+            <td>${schedule.staffAllocation}</td>
+            <td><button onclick="editSchedule(${index})">Edit</button>
+            <button onclick="deleteSchedule(${index})">Delete</button></td>
+        </tr>`;
+        tableBody.innerHTML += row;
+    });
+}
+
+function editSchedule(index) {
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")); // Get the stored schedules from localStorage
+    let schedule = schedules[index]; // Get the schedule based on the index
+    
+    // Populate the form fields with the schedule data
+    document.getElementById("serialNo").value = schedule.serialNo;
+    document.getElementById("examDate").value = schedule.date;
+    document.getElementById("fromTime").value = schedule.fromTime;
+    document.getElementById("toTime").value = schedule.toTime;
+    document.getElementById("examName").value = schedule.examName;
+    document.getElementById("examCode").value = schedule.examCode;
+    document.getElementById("examType").value = schedule.examType;
+    document.getElementById("staffAllocation").value = schedule.staffAllocation;
+    
+    // Set the hidden editIndex field to the index of the schedule being edited
+    document.getElementById("editIndex").value = index;
+    
+    // Open the form in Edit mode
+    openForm();
+}
+
+
+
+function deleteSchedule(index) {
+    let schedules = JSON.parse(localStorage.getItem("examSchedules"));
+    schedules.splice(index, 1);
+    localStorage.setItem("examSchedules", JSON.stringify(schedules));
+    loadSchedule();
+}
+
+function exportToXLSX() {
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+
+    // Prepare data for export
+    const data = schedules.map(schedule => ({
+        'Serial No': schedule.serialNo,
+        'Date': new Date(schedule.date).toISOString().split('T')[0],  // format date as YYYY-MM-DD
+        'From Time': schedule.fromTime,
+        'To Time': schedule.toTime,
+        'Exam Name': schedule.examName,
+        'Exam Code': schedule.examCode,
+        'Exam Type': schedule.examType,
+        'Staff Allocation': schedule.staffAllocation
+    }));
+
+    // Create a worksheet from the data
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Create a new workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Exam Schedule");
+
+    // Export to Excel
+    XLSX.writeFile(wb, "exam_schedule.xlsx");
+}
+
+
+
+
+
+
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4'); // Landscape orientation
+
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+
+    // Check if schedules are available
+    if (schedules.length === 0) {
+        console.error("No schedules found in localStorage.");
+        alert("No schedules available to export.");
+        return;
+    }
+
+    // Title
+    doc.setFontSize(18);
+    const title = "Exam Schedule";
+    const pageWidth = doc.internal.pageSize.width;  // Get page width
+    const titleWidth = doc.getTextWidth(title);    // Get width of the title text
+    const xPos = (pageWidth - titleWidth) / 2;     // Center the title
+    doc.text(title, xPos, 20);  // Place the title at the calculated position
+
+    // Table Column Headers
+    const headers = ["Serial No", "Date", "From Time", "To Time", "Exam Name", "Exam Code", "Exam Type", "Staff Allocation"];
+
+    // Prepare table data for rows
+    const tableData = schedules.map(schedule => [
+        schedule.serialNo,
+        schedule.date,
+        schedule.fromTime,
+        schedule.toTime,
+        schedule.examName,
+        schedule.examCode,
+        schedule.examType,
+        schedule.staffAllocation
+    ]);
+
+    // Set table margins and starting position
+    const startX = 10;
+    const startY = 30;
+
+    // Table Styling
+    doc.setFontSize(12);
+
+    // Use autoTable for table generation
+    doc.autoTable({
+        startY: startY,
+        head: [headers],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: '#4CAF50', textColor: '#fff' },
+        margin: { left: startX, top: startY },
+        styles: {
+            overflow: 'linebreak',  // Allow text to wrap inside cells
+            cellWidth: 'auto',      // Automatically calculate column widths
+            fontSize: 10,
+            halign: 'center',
+            valign: 'middle',
+            maxWidth: 60,           // Set maxWidth to avoid content overflow
+        },
+        columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 30 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 30 },
+            4: { cellWidth: 50 },
+            5: { cellWidth: 30 },
+            6: { cellWidth: 30 },
+            7: { cellWidth: 40 },
+        },
+        pageBreak: 'auto',           // Allow auto page breaks when needed
+        rowPageBreak: 'auto',       // Let rows break across pages
+        tableWidth: 'wrap',         // Ensure the table wraps within the page
+    });
+
+    // Save the PDF
+    doc.save("exam_schedule.pdf");
+}
+
+
+
+
+
+
+
+
+function searchSchedule() {
+    let searchText = document.getElementById("searchExam").value.toLowerCase();
+    let fromDate = document.getElementById("fromDate").value;
+    let toDate = document.getElementById("toDate").value;
+    let schedules = JSON.parse(localStorage.getItem("examSchedules")) || [];
+    let filtered = schedules.filter(schedule => {
+        return (
+            (!fromDate || schedule.date >= fromDate) &&
+            (!toDate || schedule.date <= toDate) &&
+            (!searchText || schedule.examName.toLowerCase().includes(searchText))
+        );
+    });
+    
+    let tableBody = document.querySelector("#scheduleTable tbody");
+    tableBody.innerHTML = "";
+    filtered.forEach((schedule, index) => {
+        let row = `<tr>
+            <td>${schedule.serialNo}</td>
+            <td>${schedule.date}</td>
+            <td>${schedule.fromTime}</td>
+            <td>${schedule.toTime}</td>
+            <td>${schedule.examName}</td>
+            <td>${schedule.examCode}</td>
+            <td>${schedule.examType}</td>
+            <td>${schedule.staffAllocation}</td>
+            <td><button onclick="editSchedule(${index})">Edit</button>
+            <button onclick="deleteSchedule(${index})">Delete</button></td>
+        </tr>`;
+        tableBody.innerHTML += row;
+    });
+} 
+
+
+      
+    </script>
+</body>
+</html>

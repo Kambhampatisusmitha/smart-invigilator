@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Stream</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #d9ecec;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .video-container {
+            width: 80%;
+            max-width: 800px;
+            aspect-ratio: 16 / 9;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px auto;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        video, canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .controls {
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button.stop {
+            background-color: #f44336;
+        }
+        button.stop:hover {
+            background-color: #d32f2f;
+        }
+        #alerts {
+            background-color: #fff3cd;
+            padding: 15px;
+            margin: 20px auto;
+            border-radius: 4px;
+            max-width: 800px;
+            text-align: left;
+            border-left: 5px solid #ffc107;
+        }
+        .alert-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Real-Time Exam Monitoring</h1>
+    
+    <div class="video-container">
+        <video id="webcam" autoplay playsinline style="display:none;"></video>
+        <canvas id="canvas"></canvas> <!-- Changed from display:none -->
+    </div>
+    
+    <div class="controls">
+        <button id="startBtn" onclick="startStream()">Start Monitoring</button>
+        <button id="stopBtn" class="stop" onclick="stopStream()" disabled>Stop Monitoring</button>
+    </div>
+    
+    <div id="alerts">
+        <h3>Detection Alerts</h3>
+        <div id="alertContainer"></div>
+    </div>
+
+    <script>
+        // DOM elements
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const alertContainer = document.getElementById('alertContainer');
+        
+        // Stream state
+        let stream = null;
+        let processingInterval = null;
+        let alertCheckInterval = null;
+        
+        // Frame processing function
+        // Update your processFrame function to handle annotated frames
+async function processFrame() {
+    if (!stream) return;
+    
+    try {
+        // Set canvas dimensions to match video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw current video frame to canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convert canvas to JPEG (quality 80%)
+        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        const base64Data = imageData.split(',')[1];
+        
+        if (!base64Data) {
+            console.error('Empty frame data');
+            return;
+        }
+        
+        const response = await fetch('/process_frame', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ frame: base64Data })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Server error: ${response.status}');
+        }
+        
+        const result = await response.json();
+        
+        if (result.error) {
+            console.error('Server error:', result.error);
+            return;
+        }
+        
+        // Display the annotated frame if available
+        if (result.annotated_frame) {
+            const img = new Image();
+            img.onload = () => {
+                // Clear canvas and draw the annotated image
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = ('data:image/jpeg;base64,${result.annotated_frame}');
+        }
+        
+        // Handle detections if any
+        if (result.detections && result.detections.length > 0) {
+            result.detections.forEach(detection => {
+                addAlert(detection);
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error processing frame:', error);
+    }
+}
+        // Add new alert to the UI
+        function addAlert(alert) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            
+            const alertElement = document.createElement('div');
+            alertElement.className = 'alert-item';
+            alertElement.innerHTML = `
+                <strong>${alert.class_name}</strong> detected
+                <div class="timestamp">${timeString} - Confidence: ${(alert.confidence * 100).toFixed(1)}%</div>
+            `;
+            
+            // Add new alert at the top
+            alertContainer.insertBefore(alertElement, alertContainer.firstChild);
+            
+            // Limit to 20 alerts
+            if (alertContainer.children.length > 20) {
+                alertContainer.removeChild(alertContainer.lastChild);
+            }
+        }
+        
+        // Fetch alerts from server
+        async function fetchAlerts() {
+            try {
+                const response = await fetch('/alerts');
+                const alerts = await response.json();
+                
+                alertContainer.innerHTML = '';
+                alerts.forEach(alert => {
+                    addAlert({
+                        class_name: alert.split(':')[1].trim().split(' ')[0],
+                        confidence: parseFloat(alert.split('confidence ')[1])
+                    });
+                });
+            } catch (error) {
+                console.error('Error fetching alerts:', error);
+            }
+        }
+        
+        // Start webcam stream
+        async function startStream() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user' 
+                    },
+                    audio: false 
+                });
+                
+                video.srcObject = stream;
+                
+                // Enable/disable buttons
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                
+                // Start processing frames every 500ms
+                processingInterval = setInterval(processFrame, 500);
+                
+                // Check for alerts every 3 seconds
+                alertCheckInterval = setInterval(fetchAlerts, 3000);
+                
+                console.log('Stream started successfully');
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                alert('Could not access webcam. Please ensure you have granted camera permissions.');
+            }
+        }
+        
+        // Stop webcam stream
+        function stopStream() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+            }
+            
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
+            }
+            
+            if (alertCheckInterval) {
+                clearInterval(alertCheckInterval);
+                alertCheckInterval = null;
+            }
+            
+            // Enable/disable buttons
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            console.log('Stream stopped');
+        }
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', stopStream);
+    </script>
+
+</body>
+</html>

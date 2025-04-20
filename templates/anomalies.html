@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detected Anomalies</title>
+    <style>
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; }
+        th { background-color: #C2D2D2; }
+        img { width: 50px; height: 50px; }
+
+
+        h1 {
+            text-align: center;
+            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+   <h1>Detected Anomalies</h1>
+<table id="csv-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Category</th>
+            <th>Details</th>
+            <th>Image</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- Table data will be populated here -->
+    </tbody>
+</table>
+
+<!-- Include PapaParse (CSV parsing library) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+<script>
+    // Function to load CSV file and render the table
+    function loadCSV() {
+        // Use PapaParse to parse the CSV file
+        Papa.parse('/static/detection_log.csv', {
+            download: true,
+            header: true,
+            dynamicTyping: true,
+            complete: function(results) {
+                var data = results.data;
+                var tableBody = document.querySelector('#csv-table tbody');
+                
+                // Loop through CSV data and create table rows
+                data.forEach(function(row) {
+                    var rowHtml = '<tr>';
+                    rowHtml += `<td>${row.ID}</td>`;
+                    rowHtml += `<td>${row.Date}</td>`;
+                    rowHtml += `<td>${row.Time}</td>`;
+                    rowHtml += `<td>${row.Category}</td>`;
+                    rowHtml += `<td>${row.Details}</td>`;
+                    rowHtml += `<td><img src="/static/${row['Image Path']}" alt="Detection Image"></td>`;
+                    rowHtml += '</tr>';
+                    tableBody.innerHTML += rowHtml;
+                });
+            }
+        });
+    }
+
+    // Call the function when the page loads
+    window.onload = loadCSV;
+</script>
+
+</body>
+</html>
